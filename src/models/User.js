@@ -35,8 +35,12 @@ const userSchema = mongoose.Schema({
     },
     tokens: [{
         token: {
-            type: String,
-            required: true
+            authToken: {
+                type: String
+            },
+            expireTime: {
+                type: Date
+            }
         }
     }]
 }, {
@@ -44,11 +48,16 @@ const userSchema = mongoose.Schema({
 })
 
 userSchema.methods.generateAuthToken = async function () {
-    const user = this
-    const token = jwt.sign({ _id: user._id.toString() }, '1ctiv5')
-    user.tokens = user.tokens.concat({ token })
+    const currentDate = new Date()
+    const expireTime = currentDate.setFullYear(currentDate.getFullYear() + 1)
+    const authToken = jwt.sign({ _id: this._id.toString() }, '1ctiv5')
+    const token = {
+        authToken,
+        expireTime
+    }
+    this.tokens = this.tokens.concat({ token })
 
-    await user.save()
+    await this.save()
 
     return token
 }
@@ -69,21 +78,19 @@ userSchema.methods.generateUserID = async function () {
 }
 
 userSchema.methods.generateOTP = async function () {
-    const user = this
     const otp = Math.floor(100000 + Math.random() * 900000).toString()
     const expireTime = new Date()
     expireTime.setMinutes(expireTime.getMinutes() + 30)
-    user.otp.expireTime = expireTime
-    user.otp.code = otp
-    await user.save()
+    this.otp.expireTime = expireTime
+    this.otp.code = otp
+    await this.save()
 
     return otp
 }
 
 
-userSchema.statics.getObject = (user) => {
-    const userObject = user.toObject()
-
+userSchema.methods.getObject = function () {
+    const userObject = this.toObject()
 
     delete userObject._id
     delete userObject.otp
@@ -93,6 +100,11 @@ userSchema.statics.getObject = (user) => {
     delete userObject.__v
 
     return userObject
+}
+
+userSchema.methods.removeOTP = async function () {
+    this.otp = undefined
+    await this.save()
 }
 
 const User = mongoose.model('User', userSchema)

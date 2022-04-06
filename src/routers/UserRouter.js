@@ -21,14 +21,31 @@ router.post('/sendOTP', async (req, res) => {
 
         // TODO Remove OTP after service provider has been implemented.
         const otp = await user.generateOTP()
+        const token = await user.generateAuthToken()
 
-        return res.send(new Response(status, "SUCCESS", "OTP Sent Successfully", { otp }))
+        return res.send(new Response(status, "SUCCESS", "OTP Sent Successfully", { otp, token }))
     } catch (e) {
         if (e.name === "ValidationError")
             return res.send(new Response(400, "FAILURE", Response.getValidationError(e)))
 
         return res.send(new Response(400, "FAILURE", "Something went wrong, Please try again later."))
     }
+})
+
+router.post('/verifyOTP', auth, (req, res) => {
+    const otp = req.body.otp
+    const user = req.user
+    if (!otp)
+        return res.send(new Response(400, "FAILURE", Response.getFieldRequiredMessage('otp')))
+
+    if (user.otp.code === otp) {
+        if (user.otp.expireTime >= new Date())
+            res.send(new Response(200, "SUCCESS", "OTP Verified Successfully.", user.getObject()))
+        else
+            res.send(new Response(400, "FAILURE", "Your OTP has expired."))
+        user.removeOTP()
+    } else
+        return res.send(new Response(400, "FAILURE", "Incorrect OTP provided."))
 })
 
 
