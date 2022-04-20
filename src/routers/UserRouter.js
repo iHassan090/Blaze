@@ -10,6 +10,7 @@ router.post('/sendOTP', async (req, res) => {
     const phoneNumber = req.body.phoneNumber
     if (!phoneNumber)
         return res.send(new Response(400, "FAILURE", Response.getFieldRequiredMessage('phoneNumber')))
+    console.log(req.body)
     try {
         let user = await User.findOne({ phoneNumber })
         let status = 200
